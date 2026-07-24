@@ -31,7 +31,7 @@ public class SkillHubOAuth2AuthorizationRequestResolver
 
     @Override
     public OAuth2AuthorizationRequest resolve(HttpServletRequest request) {
-        OAuth2AuthorizationRequest authorizationRequest = addDingTalkOpenIdToAuthorizationUri(
+        OAuth2AuthorizationRequest authorizationRequest = customizeDingTalkAuthorizationUri(
                 delegate.resolve(request)
         );
         oauthLoginFlowService.rememberReturnTo(request);
@@ -40,7 +40,7 @@ public class SkillHubOAuth2AuthorizationRequestResolver
 
     @Override
     public OAuth2AuthorizationRequest resolve(HttpServletRequest request, String clientRegistrationId) {
-        OAuth2AuthorizationRequest authorizationRequest = addDingTalkOpenIdToAuthorizationUri(
+        OAuth2AuthorizationRequest authorizationRequest = customizeDingTalkAuthorizationUri(
                 delegate.resolve(request, clientRegistrationId)
         );
         oauthLoginFlowService.rememberReturnTo(request);
@@ -49,9 +49,9 @@ public class SkillHubOAuth2AuthorizationRequestResolver
 
     /**
      * 钉钉将 openid 作为普通 OAuth2 scope，但 Spring Security 会据此切换到 OIDC 并强制校验 id_token。
-     * 因此只改写发往钉钉的授权 URL，保留内部 scopes 以继续走标准 OAuth2 授权码流程。
+     * 因此只改写发往钉钉的授权 URL，并强制展示授权确认页，内部 scopes 仍走标准 OAuth2 授权码流程。
      */
-    private OAuth2AuthorizationRequest addDingTalkOpenIdToAuthorizationUri(
+    private OAuth2AuthorizationRequest customizeDingTalkAuthorizationUri(
             OAuth2AuthorizationRequest authorizationRequest) {
         if (authorizationRequest == null
                 || !"dingtalk".equals(
@@ -63,8 +63,10 @@ public class SkillHubOAuth2AuthorizationRequestResolver
         outboundScopes.add("openid");
         outboundScopes.addAll(authorizationRequest.getScopes());
         return OAuth2AuthorizationRequest.from(authorizationRequest)
-                .parameters(parameters ->
-                        parameters.put(OAuth2ParameterNames.SCOPE, String.join(" ", outboundScopes)))
+                .parameters(parameters -> {
+                    parameters.put(OAuth2ParameterNames.SCOPE, String.join(" ", outboundScopes));
+                    parameters.put("prompt", "consent");
+                })
                 .build();
     }
 }

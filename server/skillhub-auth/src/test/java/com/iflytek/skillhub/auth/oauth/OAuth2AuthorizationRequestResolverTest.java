@@ -85,7 +85,7 @@ class OAuth2AuthorizationRequestResolverTest {
     }
 
     @Test
-    void resolve_dingTalkAddsOpenIdOnlyToOutboundScope() {
+    void resolve_dingTalkAddsRequiredParametersOnlyToOutboundRequest() {
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/oauth2/authorization/dingtalk");
 
         OAuth2AuthorizationRequest result = resolver.resolve(request, "dingtalk");
@@ -93,11 +93,13 @@ class OAuth2AuthorizationRequestResolverTest {
         assertThat(result.getScopes())
                 .containsExactlyInAnyOrder("corpid", "Contact.User.Read")
                 .doesNotContain("openid");
-        String outboundScope = UriComponentsBuilder.fromUriString(result.getAuthorizationRequestUri())
+        var queryParameters = UriComponentsBuilder.fromUriString(result.getAuthorizationRequestUri())
                 .build()
-                .getQueryParams()
-                .getFirst(OAuth2ParameterNames.SCOPE);
-        assertThat(URLDecoder.decode(outboundScope, StandardCharsets.UTF_8))
+                .getQueryParams();
+        assertThat(URLDecoder.decode(
+                queryParameters.getFirst(OAuth2ParameterNames.SCOPE),
+                StandardCharsets.UTF_8))
                 .isEqualTo("openid corpid Contact.User.Read");
+        assertThat(queryParameters.getFirst("prompt")).isEqualTo("consent");
     }
 }
